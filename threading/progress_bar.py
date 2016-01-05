@@ -1,5 +1,6 @@
+from __future__ import print_function
+
 import Tkinter
-import io
 import ttk
 
 from tempfile import TemporaryFile
@@ -9,7 +10,7 @@ import requests
 from threading import Thread
 
 
-class Delegate(object):
+class D(object):
     def __init__(self, callback=None):
         self._callback = callback
 
@@ -65,16 +66,13 @@ if __name__ == '__main__':
 
     pb_hd.pack(expand=True, fill=Tkinter.BOTH, side=Tkinter.TOP)
 
-    def callback(data, l, t):
-        pb_hd['value'] = l * 100.0 / t
+    load = D(lambda data, l, t: pb_hd.__setitem__('value', l * 100.0 / t))
 
-
-    def finish(file):
-        print 'Download finished'
+    finish = D(lambda _: print('Download finished'))
 
     pb_hd['value'] = 0
 
-    Downloader(url, on_load=callback, on_finish=finish).start()
+    Downloader(url, on_load=load, on_finish=finish).start()
 
     root.mainloop()
 

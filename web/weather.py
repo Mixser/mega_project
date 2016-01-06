@@ -2,7 +2,9 @@
 
 import requests
 
-APPID = '' # place your APPID from openweathermap.org
+import argparse
+
+APPID = '9a3675b6715bf378ff635db295ea7a2d' # place your APPID from openweathermap.org
 
 day = {
     u'01d': u'\u2600\ufe0f',
@@ -90,9 +92,22 @@ def get_weather(city, country):
 
     return Weather(r.json())
 
+
+def parse():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--city', help='Get weather for a specific city.', default='')
+    parser.add_argument('--country', default='')
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    ip_address = get_external_ip()
-    country, city = get_location_by_id(ip_address)
+    args = parse()
+    if not args.city:
+        ip_address = get_external_ip()
+        country, city = get_location_by_id(ip_address)
+    else:
+        country, city = args.country, args.city
 
     w = get_weather(city, country)
 

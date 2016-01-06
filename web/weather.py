@@ -1,6 +1,27 @@
+# -*- coding: utf-8 -*-
+
 import requests
 
 APPID = '' # place your APPID from openweathermap.org
+
+day = {
+    u'01d': u'\u2600\ufe0f',
+    u'02d': u'\U0001f324',
+    u'03d': u'\U0001f325',
+    u'04d': u'\U0001f325',
+    u'09d': u'\U0001f326',
+    u'10d': u'\U0001f326',
+    u'11d': u'\u26c8',
+    u'13d': u'\u2744\ufe0f',
+    u'01n': u'\u2600\ufe0f',
+    u'02n': u'\U0001f324',
+    u'03n': u'\U0001f325',
+    u'04n': u'\U0001f325',
+    u'09n': u'\U0001f326',
+    u'10n': u'\U0001f326',
+    u'11n': u'\u26c8',
+    u'13n': u'\u2744\ufe0f'
+}
 
 
 class Weather(object):
@@ -27,16 +48,24 @@ class Weather(object):
 
         self.city = api_response['name']
         self.country = api_response['sys']['country']
+        self.icon = day.get(self.icon, self.icon)
+
+    def _get_data(self):
+        keys = filter(lambda x: not x.startswith('_'), dir(self))
+
+        return {key: getattr(self, key) for key in keys}
+
+    def __unicode__(self):
+        first_line = u"Weather at {city}, {country}"
+        second_line = u"Temp: {temp}, Min: {temp_min}, Max: {temp_max}"
+        third_line = u"{main}, {description}, {icon}"
+        fourth_line = u"Humidity: {humidity}"
+
+        final = u'\n'.join((first_line, second_line, third_line, fourth_line))
+        return final.format(**self._get_data())
 
     def __str__(self):
-        first_line = "Weather at {city}, {country}"
-        second_line = "Temp: {temp}, Min: {temp_min}, Max: {temp_max}"
-        third_line = "{main}, {description}"
-        last_line = "Humidity: {humidity}%"
-
-        final = '\n'.join((first_line, second_line, third_line, last_line))
-
-        return final.format(**self.__dict__)
+        return unicode(self).encode('utf-8')
 
 
 def get_external_ip():

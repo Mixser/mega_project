@@ -25,22 +25,20 @@ day = {
 
 
 class Weather(object):
-    main = None
-    icon = None
-    description = None
-
-    temp_max = None
-    temp_min = None
-    temp = None
-
-    humidity = None
-
-    city = None
-    country = None
 
     def __init__(self, api_response):
         data = dict(api_response['main'])
         data.update(api_response['weather'][0])
+
+        self.main = None
+        self.icon = None
+        self.description = None
+        self.temp_max = None
+        self.temp_min = None
+        self.temp = None
+        self.humidity = None
+        self.city = None
+        self.country = None
 
         for key, value in data.items():
             if hasattr(self, key):
@@ -50,11 +48,6 @@ class Weather(object):
         self.country = api_response['sys']['country']
         self.icon = day.get(self.icon, self.icon)
 
-    def _get_data(self):
-        keys = filter(lambda x: not x.startswith('_'), dir(self))
-
-        return {key: getattr(self, key) for key in keys}
-
     def __unicode__(self):
         first_line = u"Weather at {city}, {country}"
         second_line = u"Temp: {temp}, Min: {temp_min}, Max: {temp_max}"
@@ -62,7 +55,7 @@ class Weather(object):
         fourth_line = u"Humidity: {humidity}"
 
         final = u'\n'.join((first_line, second_line, third_line, fourth_line))
-        return final.format(**self._get_data())
+        return final.format(**self.__dict__)
 
     def __str__(self):
         return unicode(self).encode('utf-8')

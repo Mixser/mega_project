@@ -54,7 +54,7 @@ class Weather(object):
         first_line = u"Weather at {city}, {country}"
         second_line = u"Temp: {temp}, Min: {temp_min}, Max: {temp_max}"
         third_line = u"{main}, {description}, {icon}"
-        fourth_line = u"Humidity: {humidity}"
+        fourth_line = u"Humidity: {humidity}%"
 
         final = u'\n'.join((first_line, second_line, third_line, fourth_line))
         return final.format(**self.__dict__)

@@ -2,6 +2,10 @@ from datetime import datetime
 from struct import pack, unpack
 from binascii import hexlify
 
+import socket
+
+from thread import start_new_thread
+
 NEW_USER = 0x01
 NEW_MESSAGE = 0x02
 LEAVE_USER = 0x03
@@ -22,6 +26,9 @@ class ObjectManager(object):
         self._objects.append(new_object)
 
         return new_object
+
+    def delete(self, id):
+        pass
 
     def count(self):
         return len(self._objects)
@@ -109,14 +116,16 @@ class Event(UnicodeMixin):
         return unicode(self).encode('utf-8')
 
     def __unicode__(self):
-        return u"{}: {}".format(hex(self._type), hexlify(self._data))
+        return u"{}: {}".format(hex(self._type), self._data)
 
 
 class EventHandler(UnicodeMixin):
     def __init__(self):
         self._callbacks = {}
+        self._connections = []
 
     def handle(self, raw_data):
+
         event = Event.get_from_bytes(raw_data)
 
         if event.event_type in self._callbacks:
@@ -151,7 +160,8 @@ class MessageServer(EventHandler):
         pass
 
     def broadcast_event(self, event):
-        print 'Broadcast event: ', event
+        for connection in self._connections:
+            connection.send(event.pack())
 
     def __new_user_callback(self, event):
         self._user_manager.create(event.data)
@@ -160,33 +170,39 @@ class MessageServer(EventHandler):
     def __new_message_callback(self, event):
         user = self._user_manager.get_user_by_id(event.source)
         self._message_manager.create(user, event.data)
+        self.broadcast_event(event)
 
     def __leave_user_callback(self, event):
-        self._user_manager.delete()
+        self._user_manager.delete(event.source)
+        self.broadcast_event(event)
+
+    def listen(self, conn):
+        self._connections.append(conn)
+
+        try:
+            while True:
+                raw_data = conn.recv(1024)
+                self.handle(raw_data)
+        except socket.error as err:
+            self._connections.remove(conn)
 
     def __unicode__(self):
         user_counts = self._user_manager.count()
         message_counts = self._message_manager.count()
         return u'Users: {}\nMessages: {}'.format(user_counts, message_counts)
 
-
-def loop(chat_server):
-    events = [Event(NEW_USER, 0, 'Mike').pack(),
-              Event(NEW_MESSAGE, 1, 'Hello, From mike').pack(),
-              Event(NEW_USER, 0, 'Mike2').pack(),
-              Event(NEW_USER, 2, 'Hello, From mike').pack(),
-              Event(NEW_MESSAGE, 2, 'Hello, From mike').pack(),
-              Event(NEW_MESSAGE, 1, 'Hello, From mike').pack(),
-              ]
-    import time
-    for event in events:
-        chat_server.handle(event)
-        time.sleep(1)
-
+def client_thread(conn, server):
+    server.listen(conn)
 
 if __name__ == '__main__':
     server = MessageServer()
 
-    loop(server)
+    sk = socket.socket()
 
-    print server
+    sk.bind(('127.0.0.1', 8000))
+
+    sk.listen(4)
+
+    while True:
+        conn, addr = sk.accept()
+        start_new_thread(client_thread, (conn, server))

@@ -2,37 +2,55 @@ from datetime import datetime
 from struct import pack, unpack
 from binascii import hexlify
 
+NEW_USER = 0x01
+NEW_MESSAGE = 0x02
+LEAVE_USER = 0x03
+
 
 class UnicodeMixin(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
 
 
-class UserManager(object):
+class ObjectManager(object):
+    def __init__(self, model):
+        self._model = model
+        self._objects = []
+
+    def create(self, *args, **kwargs):
+        new_object = self._model(*args, **kwargs)
+        self._objects.append(new_object)
+
+        return new_object
+
+    def count(self):
+        return len(self._objects)
+
+
+class UserManager(ObjectManager):
     def __init__(self):
-        self._users = []
+        super(UserManager, self).__init__(User)
 
     def get_user_by_id(self, id):
-        filter_result = filter(lambda user: user._id == id, self._users)
+        filter_result = filter(lambda user: user._id == id, self._objects)
         if not filter_result:
             raise AttributeError('User with id %s does\'t exist.')
         return filter_result[0]
 
-    def create(self, *args, **kwargs):
-        new_user = User(*args, **kwargs)
-        self._users.append(new_user)
 
-        return new_user
+class MessageManager(ObjectManager):
+    def __init__(self):
+        super(MessageManager, self).__init__(Message)
 
 
 class User(UnicodeMixin):
     _id = 0
-    objects = UserManager()
 
     def __init__(self, nickname):
         self._nickname = nickname
         self._messages = []
-        self._id = ++User._id
+        User._id += 1
+        self._id = User._id
 
     def __unicode__(self):
         return u'{}: {}'.format(self._id, unicode(self._nickname))
@@ -59,6 +77,10 @@ class Event(UnicodeMixin):
     def data(self):
         return self._data
 
+    @property
+    def source(self):
+        return self._source
+
     @classmethod
     def get_from_bytes(cls, raw_data):
         header_length = 8
@@ -74,8 +96,14 @@ class Event(UnicodeMixin):
         return event
 
     def pack(self):
-        raw_data = pack('!BBHI%ss' % len(self._data), 0, self._type, self._source, len(self._data), self._data)
-        return raw_data
+        type = self._type
+        source = self._source
+        data_length = len(self._data)
+        data = self._data
+
+        package_format = '!BBHI%ss' % data_length
+
+        return pack(package_format, 0, type, source, data_length, data)
 
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -112,36 +140,53 @@ class MessageServer(EventHandler):
 
         self._messages = []
 
-        self.register_handler(0x01, self.__new_user_callback)
-        self.register_handler(0x02, self.__new_message_callback)
+        self._user_manager = UserManager()
+        self._message_manager = MessageManager()
+
+        self.register_handler(NEW_USER, self.__new_user_callback)
+        self.register_handler(NEW_MESSAGE, self.__new_message_callback)
         self.register_handler(0x03, self.__leave_user_callback)
 
-    def __new_user_callback(self, event):
-        User.objects.create(event.data)
-
-    def __new_message_callback(self, event):
-        new_message = Message()
-
-    def __leave_user_callback(self, event):
+    def send_message_to_user(self, user, message):
         pass
 
-    def loop(self):
-        events = [Event(0x01, 0, 'Mike').pack(),
-                  Event(0x02, 1, 'Hello, From mike').pack(),
-                  Event(0x03, 1, 'Mike').pack()
-                  ]
+    def broadcast_event(self, event):
+        print 'Broadcast event: ', event
 
-        for event in events:
-            self.handle(event)
+    def __new_user_callback(self, event):
+        self._user_manager.create(event.data)
+        self.broadcast_event(event)
+
+    def __new_message_callback(self, event):
+        user = self._user_manager.get_user_by_id(event.source)
+        self._message_manager.create(user, event.data)
+
+    def __leave_user_callback(self, event):
+        self._user_manager.delete()
 
     def __unicode__(self):
-        return u'Users: {}\n\rMessages: {}'.format(len(self._users), len(self._messages))
+        user_counts = self._user_manager.count()
+        message_counts = self._message_manager.count()
+        return u'Users: {}\nMessages: {}'.format(user_counts, message_counts)
 
+
+def loop(chat_server):
+    events = [Event(NEW_USER, 0, 'Mike').pack(),
+              Event(NEW_MESSAGE, 1, 'Hello, From mike').pack(),
+              Event(NEW_USER, 0, 'Mike2').pack(),
+              Event(NEW_USER, 2, 'Hello, From mike').pack(),
+              Event(NEW_MESSAGE, 2, 'Hello, From mike').pack(),
+              Event(NEW_MESSAGE, 1, 'Hello, From mike').pack(),
+              ]
+    import time
+    for event in events:
+        chat_server.handle(event)
+        time.sleep(1)
 
 
 if __name__ == '__main__':
     server = MessageServer()
 
-    server.loop()
+    loop(server)
 
     print server

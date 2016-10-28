@@ -5,7 +5,7 @@ import requests
 
 import argparse
 
-APPID = '9a3675b6715bf378ff635db295ea7a2d' # place your APPID from openweathermap.org
+APPID = '9a3675b6715bf378ff635db295ea7a2d'  # place your APPID from openweathermap.org
 
 day = {
     u'01d': u'\u2600\ufe0f',
@@ -113,4 +113,3 @@ if __name__ == '__main__':
     w = get_weather(city, country)
 
     print w
-

@@ -46,7 +46,7 @@ if __name__ == '__main__':
     distance = get_distance(first_city_location, second_city_location) / 1000.0
 
     output_str = "Distance between {0} and {1} is {2:.2f} km.".format(first_city,
-                                                                  second_city,
-                                                                  distance)
+                                                                      second_city,
+                                                                      distance)
 
     print output_str

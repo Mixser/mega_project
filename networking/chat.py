@@ -92,6 +92,8 @@ class Event(UnicodeMixin):
     def get_from_bytes(cls, raw_data):
         header_length = 8
         header_raw = raw_data[:header_length]
+        if len(header_raw) != header_length:
+            return None
         header = unpack('!BBHI', header_raw)
         event_type = header[1]
         event_source = header[2]
@@ -128,6 +130,9 @@ class EventHandler(UnicodeMixin):
 
         event = Event.get_from_bytes(raw_data)
 
+        if not event:
+            return
+
         if event.event_type in self._callbacks:
             print 'Received: ', event
             return self._callbacks[event.event_type](event)
@@ -139,7 +144,16 @@ class EventHandler(UnicodeMixin):
 
         if type in self._callbacks:
             raise AttributeError("Callback with this type has already exist.")
-        self._callbacks[type] = callback
+
+        def _callback_wrapper(event):
+            callback(event)
+            self.broadcast_event(event)
+
+        self._callbacks[type] = _callback_wrapper
+
+    def broadcast_event(self, event):
+        for connection in self._connections:
+            connection.send(event.pack())
 
 
 class MessageServer(EventHandler):
@@ -154,27 +168,20 @@ class MessageServer(EventHandler):
 
         self.register_handler(NEW_USER, self.__new_user_callback)
         self.register_handler(NEW_MESSAGE, self.__new_message_callback)
-        self.register_handler(0x03, self.__leave_user_callback)
+        self.register_handler(LEAVE_USER, self.__leave_user_callback)
 
     def send_message_to_user(self, user, message):
         pass
 
-    def broadcast_event(self, event):
-        for connection in self._connections:
-            connection.send(event.pack())
-
     def __new_user_callback(self, event):
         self._user_manager.create(event.data)
-        self.broadcast_event(event)
 
     def __new_message_callback(self, event):
         user = self._user_manager.get_user_by_id(event.source)
         self._message_manager.create(user, event.data)
-        self.broadcast_event(event)
 
     def __leave_user_callback(self, event):
         self._user_manager.delete(event.source)
-        self.broadcast_event(event)
 
     def listen(self, conn):
         self._connections.append(conn)

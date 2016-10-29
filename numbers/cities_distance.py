@@ -20,7 +20,7 @@ def get_city_location(city_name):
     return lat, lng
 
 
-def distance(first, second):
+def get_distance(first, second):
     radius = 6371e3
 
     phi1, phi2 = first[0] * math.pi / 180.0, second[0] * math.pi / 180.0
@@ -34,8 +34,19 @@ def distance(first, second):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 3:
+        print "You must provide two cities as program's arguments"
 
-    f_lat, f_lng = get_city_location(sys.argv[1])
-    s_lat, s_lng = get_city_location(sys.argv[2])
+    first_city = sys.argv[1]
+    second_city = sys.argv[2]
 
-    print 'Distance:', distance((f_lat, f_lng), (s_lat, s_lng)) / 1000, "km."
+    first_city_location = get_city_location(first_city)
+    second_city_location = get_city_location(second_city)
+
+    distance = get_distance(first_city_location, second_city_location) / 1000.0
+
+    output_str = "Distance between {0} and {1} is {2:.2f} km.".format(first_city,
+                                                                  second_city,
+                                                                  distance)
+
+    print output_str

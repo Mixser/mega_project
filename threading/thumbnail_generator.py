@@ -14,7 +14,6 @@ class ThumbnailCreator(object):
         if not path.isdir(dest_path):
             mkdir(dest_path)
 
-
         self._dest_path = dest_path
         self._sizes = sizes
 
